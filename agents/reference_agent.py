@@ -2,7 +2,6 @@
 
 Owner: Partner B (task B5).
 """
-import random
 
 import chess
 
@@ -15,18 +14,10 @@ class ReferenceAgent(BaseAgent):
     author = "Partner B"
 
     def evaluate(self, board):
-        # TODO(B5): sum PIECE_VALUES for White minus the same for Black.
-        raise NotImplementedError("B5: evaluate")
+        score = 0
+        for piece_type, value in PIECE_VALUES.items():
+            score += value * len(board.pieces(piece_type, chess.WHITE))
+            score -= value * len(board.pieces(piece_type, chess.BLACK))
+        return score
 
 
-class RandomAgent(BaseAgent):
-    """Plays a uniformly random legal move. Useful for smoke tests."""
-    name = "Random"
-    author = "Partner B"
-
-    def evaluate(self, board):
-        return 0
-
-    def choose_move(self, board):
-        # TODO(B5): skip the search entirely and pick random.choice of the legal moves.
-        raise NotImplementedError("B5: choose_move")
