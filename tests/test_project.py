@@ -1,7 +1,4 @@
 """tests/test_project.py - shared test suite.
-
-Owner: Partner B (task B6). Run from the project root:  python -m pytest -q
-The slow agent-vs-reference test is skipped unless you pass:  -m slow
 """
 import chess
 import pytest
