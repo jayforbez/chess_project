@@ -1,7 +1,5 @@
 """agents/agent_b_fortress.py - Agent B, "The Fortress".
 
-Owner: Partner B ONLY. Partner A must not read or edit this file.
-
 Strategy: win by structure. The evaluation rewards good piece placement
 (piece-square tables), healthy pawns, a sheltered king and a solid grip on
 the centre. It does not reward mobility or attacks directly, so it prefers
