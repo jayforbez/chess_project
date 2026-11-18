@@ -1,6 +1,4 @@
 """agents/reference_agent.py - baselines to test against.
-
-Owner: Partner B (task B5).
 """
 
 import chess
