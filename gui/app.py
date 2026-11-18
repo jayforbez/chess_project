@@ -1,8 +1,5 @@
 """gui/app.py - tkinter GUI with two modes: Human vs Agent and Agent vs Agent.
 
-Owner: Partner B (tasks B1, B2, B3).
-Run:  python -m gui.app
-
 Unicode pieces on a Canvas, so there are no image files to ship.
 Agent searches run in a background thread; results come back through a
 queue that the Tk main loop polls, so the window never freezes.
