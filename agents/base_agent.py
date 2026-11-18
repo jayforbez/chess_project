@@ -1,6 +1,6 @@
 """agents/base_agent.py - the common interface. Written together on day 1, then FROZEN.
 
-Every agent (Raider, Fortress, Reference, Random) subclasses BaseAgent and
+Every agent (Raider, Fortress, Reference) subclasses BaseAgent and
 only overrides evaluate(). The GUI, harness and tests rely on exactly:
     agent.name, agent.depth, agent.evaluate(board) -> int, agent.choose_move(board) -> chess.Move
 """
