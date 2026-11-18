@@ -4,7 +4,7 @@ from agents.agent_b_fortress import FortressAgent
 from agents.reference_agent import ReferenceAgent
 
 AGENT_REGISTRY = {
-    "Raider (Partner A)": RaiderAgent,
-    "Fortress (Partner B)": FortressAgent,
-    "Reference (material only)": ReferenceAgent,
+    "Raider": RaiderAgent,
+    "Fortress": FortressAgent,
+    "Reference": ReferenceAgent,
 }
