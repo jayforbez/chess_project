@@ -150,4 +150,4 @@ class RaiderAgent(BaseAgent):
         score += king_zone_attack_score(board) * WEIGHTS["king_zone"]
         score += threat_score(board)
 
-        return score
+        return int(score)
