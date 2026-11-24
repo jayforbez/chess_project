@@ -13,7 +13,7 @@ Alpha-Beta is an optimization of Minimax. It keeps track of two values:
 - **Alpha**: The best score White has found so far.
 - **Beta**: The best score Black has found so far.
 If we are evaluating a branch and find that it's already worse than a move we've already found elsewhere, we stop searching that branch (a "cutoff"). 
-Move ordering makes this prune much faster. By looking at captures, promotions, and checks first (via `order_moves`), we find strong moves early, which raises Alpha and triggers more cutoffs.
+Move ordering makes this prune much faster. By looking at captures, promotions, and checks first (via `order_moves`), we find strong moves early, which raises Alpha and triggers more pruning.
 
 ## Node Counts
 Here is the node count comparison between pure Minimax and Alpha-Beta at depths 2 and 3 on three different positions:
