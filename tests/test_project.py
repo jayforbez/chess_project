@@ -1,13 +1,10 @@
 """tests/test_project.py - shared test suite.
-
-Owner: Partner B (task B6). Run from the project root:  python -m pytest -q
-The slow agent-vs-reference test is skipped unless you pass:  -m slow
 """
 import chess
 import pytest
 
 from agents import AGENT_REGISTRY
-from agents.reference_agent import RandomAgent, ReferenceAgent
+from agents.reference_agent import ReferenceAgent
 from engine.game import get_legal_moves, get_result, is_game_over, make_move, new_game, undo_move
 from search.minimax import INF, MATE_SCORE, alphabeta, find_best_move, minimax
 
@@ -21,35 +18,58 @@ TEST_FENS = [
 
 
 def test_legal_moves():
-    # TODO(B6): the start position has 20 legal moves; make_move rejects illegal ones.
-    raise NotImplementedError("B6: test_legal_moves")
+    board = new_game()
+    assert len(get_legal_moves(board)) == 20
+    make_move(board, "e2e4")
+    assert board.piece_at(chess.E4).piece_type == chess.PAWN
+    assert undo_move(board).uci() == "e2e4"
+    with pytest.raises(ValueError):
+        make_move(board, "e2e5")
 
 
 def test_checkmate_detection():
-    # TODO(B6): play fool's mate (f3 e5 g4 Qh4#) and check is_game_over / get_result.
-    raise NotImplementedError("B6: test_checkmate_detection")
+    board = new_game()
+    for uci in ["f2f3", "e7e5", "g2g4", "d8h4"]:
+        make_move(board, uci)
+    assert is_game_over(board)
+    assert get_result(board) == "0-1"
 
 
 @pytest.mark.parametrize("agent_cls", [ReferenceAgent, *AGENT_REGISTRY.values()])
 @pytest.mark.parametrize("fen", TEST_FENS)
 def test_alphabeta_equals_minimax(agent_cls, fen):
-    # TODO(B6): same score from both searches at depth 2, every agent, every FEN.
-    raise NotImplementedError("B6: test_alphabeta_equals_minimax")
+    agent = agent_cls(depth=2)
+    board = chess.Board(fen)
+    maximizing = board.turn == chess.WHITE
+    mm = minimax(board, 2, maximizing, agent.evaluate)
+    ab = alphabeta(board, 2, -INF, INF, maximizing, agent.evaluate)
+    assert mm == ab
+    assert board.fen() == fen  # the search must leave the board as it found it
 
 
 def test_finds_mate_in_one():
-    # TODO(B6): implement test_finds_mate_in_one.
-    raise NotImplementedError("B6: test_finds_mate_in_one")
+    board = chess.Board(TEST_FENS[2])
+    move, score = find_best_move(board, 2, ReferenceAgent().evaluate)
+    assert move == chess.Move.from_uci("h5f7")
+    assert score >= MATE_SCORE
 
 
 @pytest.mark.parametrize("name", list(AGENT_REGISTRY))
 def test_agent_returns_legal_move(name):
-    # TODO(B6): every registered agent returns a legal chess.Move from several positions.
-    raise NotImplementedError("B6: test_agent_returns_legal_move")
+    agent = AGENT_REGISTRY[name](depth=2)
+    for fen in TEST_FENS:
+        board = chess.Board(fen)
+        move = agent.choose_move(board)
+        assert isinstance(move, chess.Move)
+        assert move in board.legal_moves
+        assert isinstance(agent.evaluate(board), int)
 
 
 @pytest.mark.slow
 @pytest.mark.parametrize("name", ["Raider", "Fortress"])
-def test_agent_beats_random(name):
-    # TODO(B6): implement test_agent_beats_random.
-    raise NotImplementedError("B6: test_agent_beats_random")
+def test_agent_vs_reference(name):
+    """A full game as White against a shallower ReferenceAgent; the agent must not lose."""
+    from match.harness import play_game
+    agent = AGENT_REGISTRY[name](depth=2)
+    game = play_game(agent, ReferenceAgent(depth=1), max_plies=200)
+    assert game["result"] in ("1-0", "1/2-1/2")

@@ -1,7 +1,5 @@
 """agents/agent_b_fortress.py - Agent B, "The Fortress".
 
-Owner: Partner B ONLY. Partner A must not read or edit this file.
-
 Strategy: win by structure. The evaluation rewards good piece placement
 (piece-square tables), healthy pawns, a sheltered king and a solid grip on
 the centre. It does not reward mobility or attacks directly, so it prefers
@@ -96,33 +94,58 @@ def _side(color):
 
 def material_score(board):
     """White material minus Black material in centipawns."""
-    # TODO(B4): use PIECE_VALUES from base_agent.
-    raise NotImplementedError("B4: material_score")
+    score = 0
+    for piece_type, value in PIECE_VALUES.items():
+        score += value * (len(board.pieces(piece_type, chess.WHITE))
+                          - len(board.pieces(piece_type, chess.BLACK)))
+    return score
 
 
 def piece_square_score(board):
     """Sum PST bonuses: + for White pieces, - for Black pieces."""
-    # TODO(B4): White reads PST[type][chess.square_mirror(sq)], Black reads PST[type][sq].
-    raise NotImplementedError("B4: piece_square_score")
+    score = 0
+    for sq, piece in board.piece_map().items():
+        table = PST[piece.piece_type]
+        if piece.color == chess.WHITE:
+            score += table[chess.square_mirror(sq)]
+        else:
+            score -= table[sq]
+    return score
 
 
 def count_doubled(board, color):
     """Extra pawns on files that already have one (3 pawns on a file = 2 doubled)."""
-    # TODO(B4): count pawns per file with chess.square_file.
-    raise NotImplementedError("B4: count_doubled")
+    files = [0] * 8
+    for sq in board.pieces(chess.PAWN, color):
+        files[chess.square_file(sq)] += 1
+    return sum(n - 1 for n in files if n > 1)
 
 
 def count_isolated(board, color):
     """Pawns with no friendly pawn on either neighbouring file."""
-    # TODO(B4): implement count_isolated.
-    raise NotImplementedError("B4: count_isolated")
+    pawn_files = {chess.square_file(sq) for sq in board.pieces(chess.PAWN, color)}
+    return sum(1 for sq in board.pieces(chess.PAWN, color)
+               if chess.square_file(sq) - 1 not in pawn_files
+               and chess.square_file(sq) + 1 not in pawn_files)
 
 
 def passed_pawn_ranks(board, color):
     """Relative rank (0-7, from color's side) of every passed pawn: no enemy pawn
     ahead of it on its own or a neighbouring file."""
-    # TODO(B4): for each pawn, look at enemy pawns on files f-1..f+1 further up the board.
-    raise NotImplementedError("B4: passed_pawn_ranks")
+    enemy = board.pieces(chess.PAWN, not color)
+    ranks = []
+    for sq in board.pieces(chess.PAWN, color):
+        f, r = chess.square_file(sq), chess.square_rank(sq)
+        blocked = False
+        for e in enemy:
+            ef, er = chess.square_file(e), chess.square_rank(e)
+            if abs(ef - f) <= 1 and ((color == chess.WHITE and er > r) or
+                                     (color == chess.BLACK and er < r)):
+                blocked = True
+                break
+        if not blocked:
+            ranks.append(r if color == chess.WHITE else 7 - r)
+    return ranks
 
 
 def count_passed(board, color):
@@ -131,20 +154,53 @@ def count_passed(board, color):
 
 def pawn_structure_score(board):
     """Doubled and isolated pawns cost points; passed pawns earn more as they advance."""
-    # TODO(B4): implement pawn_structure_score.
-    raise NotImplementedError("B4: pawn_structure_score")
+    score = 0
+    for color in (chess.WHITE, chess.BLACK):
+        s = (count_doubled(board, color) * WEIGHTS["doubled"]
+             + count_isolated(board, color) * WEIGHTS["isolated"]
+             + sum(WEIGHTS["passed"][r] for r in passed_pawn_ranks(board, color)))
+        score += _side(color) * s
+    return score
 
 
 def king_safety_score(board):
     """Castled king, pawn shield in front of it, castling rights, no open king file."""
-    # TODO(B4): shield = own pawns on the 3 squares one rank in front of the king.
-    raise NotImplementedError("B4: king_safety_score")
+    score = 0
+    for color in (chess.WHITE, chess.BLACK):
+        king_sq = board.king(color)
+        if king_sq is None:
+            continue
+        s = 0
+        if king_sq in CASTLED_SQUARES[color]:
+            s += WEIGHTS["castled"]
+        elif board.has_castling_rights(color):
+            s += WEIGHTS["castle_rights"]
+
+        f, r = chess.square_file(king_sq), chess.square_rank(king_sq)
+        step = 1 if color == chess.WHITE else -1
+        own_pawns = board.pieces(chess.PAWN, color)
+        for df in (-1, 0, 1):
+            ff, rr = f + df, r + step
+            if 0 <= ff <= 7 and 0 <= rr <= 7 and chess.square(ff, rr) in own_pawns:
+                s += WEIGHTS["shield"]
+        if not any(chess.square_file(p) == f for p in own_pawns):
+            s += WEIGHTS["open_file_king"]
+        score += _side(color) * s
+    return score
 
 
 def center_control_score(board):
     """Occupying and attacking d4, e4, d5, e5."""
-    # TODO(B4): implement center_control_score.
-    raise NotImplementedError("B4: center_control_score")
+    score = 0
+    for color in (chess.WHITE, chess.BLACK):
+        s = 0
+        for sq in CENTER:
+            piece = board.piece_at(sq)
+            if piece and piece.color == color:
+                s += WEIGHTS["center_occupy"]
+            s += len(board.attackers(color, sq)) * WEIGHTS["center_attack"]
+        score += _side(color) * s
+    return score
 
 
 class FortressAgent(BaseAgent):
@@ -153,5 +209,10 @@ class FortressAgent(BaseAgent):
 
     def evaluate(self, board):
         """Sum of the Fortress's terms, centipawns from White's point of view."""
-        # TODO(B4): add the five terms, applying WEIGHTS['material'] and WEIGHTS['pst'].
-        raise NotImplementedError("B4: evaluate")
+        return int(
+            WEIGHTS["material"] * material_score(board)
+            + WEIGHTS["pst"] * piece_square_score(board)
+            + pawn_structure_score(board)
+            + king_safety_score(board)
+            + center_control_score(board)
+        )

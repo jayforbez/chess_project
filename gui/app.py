@@ -1,8 +1,5 @@
 """gui/app.py - tkinter GUI with two modes: Human vs Agent and Agent vs Agent.
 
-Owner: Partner B (tasks B1, B2, B3).
-Run:  python -m gui.app
-
 Unicode pieces on a Canvas, so there are no image files to ship.
 Agent searches run in a background thread; results come back through a
 queue that the Tk main loop polls, so the window never freezes.
@@ -53,28 +50,53 @@ class ChessApp:
     # ------------------------------------------------------------------ B1
     def draw_board(self):
         """Draw the 64 squares plus highlights for the last move, selection and targets."""
-        # TODO(B1): rank 8 at the top: row = 7 - rank. Pick the fill from the highlight state.
-        raise NotImplementedError("B1: draw_board")
+        self.canvas.delete("square")
+        last = self.board.move_stack[-1] if self.board.move_stack else None
+        for sq in chess.SQUARES:
+            x, y = chess.square_file(sq) * SQ, (7 - chess.square_rank(sq)) * SQ
+            fill = LIGHT if (chess.square_file(sq) + chess.square_rank(sq)) % 2 else DARK
+            if last and sq in (last.from_square, last.to_square):
+                fill = LAST
+            if sq == self.selected:
+                fill = SELECT
+            self.canvas.create_rectangle(x, y, x + SQ, y + SQ, fill=fill, width=0, tags="square")
+            if sq in self.targets:
+                r = SQ // 7
+                self.canvas.create_oval(x + SQ / 2 - r, y + SQ / 2 - r, x + SQ / 2 + r,
+                                        y + SQ / 2 + r, fill=TARGET, width=0, tags="square")
 
     def draw_pieces(self):
         """Draw every piece as a Unicode glyph centred on its square."""
-        # TODO(B1): use UNICODE_PIECES[piece.symbol()] and canvas.create_text.
-        raise NotImplementedError("B1: draw_pieces")
+        self.canvas.delete("piece")
+        for sq, piece in self.board.piece_map().items():
+            x = chess.square_file(sq) * SQ + SQ / 2
+            y = (7 - chess.square_rank(sq)) * SQ + SQ / 2
+            self.canvas.create_text(x, y, text=UNICODE_PIECES[piece.symbol()],
+                                    font=("DejaVu Sans", int(SQ * 0.62)), fill="#111", tags="piece")
 
     def square_from_click(self, pos):
         """Convert a click's (x, y) pixel position to a chess square, or None."""
-        # TODO(B1): file = x // SQ, rank = 7 - y // SQ; check bounds.
-        raise NotImplementedError("B1: square_from_click")
+        x, y = pos
+        file, rank = int(x // SQ), 7 - int(y // SQ)
+        if 0 <= file < 8 and 0 <= rank < 8:
+            return chess.square(file, rank)
+        return None
 
     def highlight_moves(self, square):
         """Select `square` and store the destinations of its legal moves."""
-        # TODO(B1): implement highlight_moves.
-        raise NotImplementedError("B1: highlight_moves")
+        self.selected = square
+        self.targets = [m.to_square for m in get_legal_moves(self.board) if m.from_square == square]
+        self.redraw()
 
     def update_status(self, text=None):
         """Show `text`, or a default line: whose turn it is, check, or the result."""
-        # TODO(B1): implement update_status.
-        raise NotImplementedError("B1: update_status")
+        if text is None:
+            if is_game_over(self.board):
+                text = f"Game over: {get_result(self.board)} ({get_termination(self.board)})"
+            else:
+                side = "White" if self.board.turn == chess.WHITE else "Black"
+                text = f"{side} to move" + (" - check!" if self.board.is_check() else "")
+        self.status.set(text)
 
     def redraw(self):
         self.draw_board()
@@ -83,29 +105,103 @@ class ChessApp:
     # ------------------------------------------------------------------ B2
     def select_agent_menu(self):
         """Side panel: mode, opponent / both agents, depth, colour, buttons."""
-        # TODO(B2): Comboboxes filled from AGENT_REGISTRY, a Spinbox for depth.
-        raise NotImplementedError("B2: select_agent_menu")
+        panel = ttk.Frame(self.root, padding=8)
+        panel.grid(row=0, column=1, sticky="n")
+        names = list(AGENT_REGISTRY)
+        self.white_choice = tk.StringVar(value="Human")
+        self.black_choice = tk.StringVar(value=names[0])
+        self.depth_var = tk.IntVar(value=3)
+
+        ttk.Label(panel, text="White").grid(row=0, column=0, sticky="w")
+        ttk.Combobox(panel, textvariable=self.white_choice, values=["Human", *names],
+                     state="readonly", width=24).grid(row=1, column=0, pady=(0, 6))
+        ttk.Label(panel, text="Black").grid(row=2, column=0, sticky="w")
+        ttk.Combobox(panel, textvariable=self.black_choice, values=["Human", *names],
+                     state="readonly", width=24).grid(row=3, column=0, pady=(0, 6))
+        ttk.Label(panel, text="Search depth").grid(row=4, column=0, sticky="w")
+        ttk.Spinbox(panel, from_=1, to=5, textvariable=self.depth_var, width=5).grid(row=5, column=0, sticky="w")
+
+        ttk.Button(panel, text="New game", command=self.new_game_from_menu).grid(row=6, column=0, sticky="ew", pady=(12, 2))
+        ttk.Button(panel, text="Undo", command=self.undo).grid(row=7, column=0, sticky="ew", pady=2)
+        self.autoplay_btn = ttk.Button(panel, text="Autoplay: off", command=self.toggle_autoplay)
+        self.autoplay_btn.grid(row=9, column=0, sticky="ew", pady=2)
 
     def new_game_from_menu(self):
         """Read the menu and start Human vs Agent or Agent vs Agent."""
-        # TODO(B2): implement new_game_from_menu.
-        raise NotImplementedError("B2: new_game_from_menu")
+        depth = int(self.depth_var.get())
+        w, b = self.white_choice.get(), self.black_choice.get()
+        make = lambda name: AGENT_REGISTRY[name](depth=depth)
+        if w != "Human" and b != "Human":
+            self.start_agent_match(make(w), make(b))
+            return
+        self.mode = "human"
+        self.autoplay = False
+        self.autoplay_btn.config(text="Autoplay: off")
+        self.board = new_game()
+        self.selected, self.targets = None, []
+        self.agents = {}
+        if w != "Human":
+            self.agents[chess.WHITE] = make(w)
+        if b != "Human":
+            self.agents[chess.BLACK] = make(b)
+        self.human_color = chess.BLACK if w != "Human" else chess.WHITE
+        self.redraw()
+        self.update_status()
+        self._maybe_agent_turn()
 
     def handle_human_move(self, click):
         """First click selects one of your pieces, second click moves it."""
-        # TODO(B2): ignore clicks while the agent thinks or when it is not a human's turn.
-        # TODO(B2): build chess.Move(from, to); ask handle_promotion() for pawn promotions.
-        raise NotImplementedError("B2: handle_human_move")
+        if self.thinking or is_game_over(self.board) or self.board.turn in self.agents:
+            return
+        sq = self.square_from_click((click.x, click.y))
+        if sq is None:
+            return
+        piece = self.board.piece_at(sq)
+        if self.selected is None or (piece and piece.color == self.board.turn):
+            if piece and piece.color == self.board.turn:
+                self.highlight_moves(sq)
+            return
+        move = chess.Move(self.selected, sq)
+        moving = self.board.piece_at(self.selected)
+        if moving.piece_type == chess.PAWN and chess.square_rank(sq) in (0, 7):
+            move.promotion = self.handle_promotion()
+        self.selected, self.targets = None, []
+        if move in self.board.legal_moves:
+            make_move(self.board, move)
+            self.redraw()
+            self.update_status()
+            self._maybe_agent_turn()
+        else:
+            self.redraw()
 
     def handle_promotion(self):
         """Ask which piece to promote to. Returns a chess piece type (default queen)."""
-        # TODO(B2): implement handle_promotion.
-        raise NotImplementedError("B2: handle_promotion")
+        choice = {"value": chess.QUEEN}
+        win = tk.Toplevel(self.root)
+        win.title("Promote to")
+        win.transient(self.root)
+        glyph = "QRBN" if self.board.turn == chess.WHITE else "qrbn"
+        for i, (sym, ptype) in enumerate(zip(glyph, (chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT))):
+            def pick(p=ptype):
+                choice["value"] = p
+                win.destroy()
+            tk.Button(win, text=UNICODE_PIECES[sym], font=("DejaVu Sans", 28), command=pick).grid(row=0, column=i)
+        win.grab_set()
+        self.root.wait_window(win)
+        return choice["value"]
 
     def run_agent_move_threaded(self):
         """Search on a COPY of the board in a worker thread; never touch Tk from it."""
-        # TODO(B2): set self.thinking, start a daemon Thread, put (fen, move) on self.results.
-        raise NotImplementedError("B2: run_agent_move_threaded")
+        agent = self.agents[self.board.turn]
+        snapshot = self.board.copy()
+        fen = self.board.fen()
+        self.thinking = True
+        self.update_status(f"{agent.name} is thinking (depth {agent.depth})...")
+
+        def work():
+            move = agent.choose_move(snapshot)
+            self.results.put((fen, move, dict(agent.last_stats)))
+        threading.Thread(target=work, daemon=True).start()
 
     def _poll_results(self):
         """Runs on the Tk thread every 50 ms and applies finished agent moves."""
@@ -144,23 +240,33 @@ class ChessApp:
     # ------------------------------------------------------------------ B3
     def start_agent_match(self, agent1, agent2):
         """Agent vs agent: agent1 plays White. Use Step or Autoplay to advance."""
-        # TODO(B3): implement start_agent_match.
-        raise NotImplementedError("B3: start_agent_match")
+        self.mode = "agents"
+        self.board = new_game()
+        self.selected, self.targets = None, []
+        self.agents = {chess.WHITE: agent1, chess.BLACK: agent2}
+        self.redraw()
+        self.update_status(f"{agent1.name} (W) vs {agent2.name} (B): press Step or Autoplay")
 
     def step_move(self):
         """Play exactly one agent move (agent vs agent mode)."""
-        # TODO(B3): implement step_move.
-        raise NotImplementedError("B3: step_move")
+        if self.mode != "agents" or self.thinking or is_game_over(self.board):
+            if is_game_over(self.board):
+                self.autoplay = False
+                self.autoplay_btn.config(text="Autoplay: off")
+                self.update_status()
+            return
+        self.run_agent_move_threaded()
 
     def toggle_autoplay(self):
         """Start or stop automatic stepping."""
-        # TODO(B3): implement toggle_autoplay.
-        raise NotImplementedError("B3: toggle_autoplay")
+        self.autoplay = not self.autoplay
+        self.autoplay_btn.config(text=f"Autoplay: {'on' if self.autoplay else 'off'}")
+        if self.autoplay:
+            self.step_move()
 
     def set_speed(self, ms):
         """Delay in milliseconds between autoplay moves."""
-        # TODO(B3): implement set_speed.
-        raise NotImplementedError("B3: set_speed")
+        self.speed_ms = max(0, int(ms))
 
 
 def main():
