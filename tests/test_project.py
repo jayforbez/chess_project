@@ -49,7 +49,7 @@ def test_agent_returns_legal_move(name):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("name", ["Raider (Partner A)", "Fortress (Partner B)"])
+@pytest.mark.parametrize("name", ["Raider", "Fortress"])
 def test_agent_beats_random(name):
     # TODO(B6): implement test_agent_beats_random.
     raise NotImplementedError("B6: test_agent_beats_random")
