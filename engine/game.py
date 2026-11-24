@@ -14,52 +14,64 @@ UNICODE_PIECES = {
 
 
 def new_game(fen=None):
-    """Return a fresh board, or one set up from a FEN string."""
-    # TODO(A1): return chess.Board() or chess.Board(fen) when fen is given.
-    raise NotImplementedError("A1: new_game")
+    # Return a fresh board, or one set up from a FEN string.
+    if fen:
+        return chess.Board()
+    return chess.Board()
 
 
 def get_legal_moves(board):
-    """Return the legal moves for the side to move as a list of chess.Move."""
-    # TODO(A1): board.legal_moves is a generator; turn it into a list.
-    raise NotImplementedError("A1: get_legal_moves")
-
+    # Return the legal moves for the side to move as a list of chess.Move.
+    return list(board.legal_moves)
 
 def make_move(board, move):
-    """Play a move on the board. Accepts a chess.Move or a UCI string like 'e2e4'.
+    # Play a move on the board. Accepts a chess.Move or a UCI string like 'e2e4'.
+    # Raises ValueError for an illegal move so GUI bugs show up immediately.
 
-    Raises ValueError for an illegal move so GUI bugs show up immediately.
-    """
-    # TODO(A1): convert a string with chess.Move.from_uci, check legality, push it.
-    raise NotImplementedError("A1: make_move")
-
+    if isinstance(move, str):
+        try:
+            move = chess.Move.from_uci(move)
+        except ValueError:
+            raise ValueError(f"Not a  valid move: {move!r}")
+    if move not in board.legal_moves:
+        raise ValueError(f"This is an illegal move {move} for {board.fen()}")
+    board.push(move)
+    return move
 
 def undo_move(board):
-    """Take back the last move and return it (None if no moves were played)."""
-    # TODO(A1): guard against an empty move stack, then board.pop().
-    raise NotImplementedError("A1: undo_move")
+    # Take back the last move and return it (None if no moves were played).
+    if not board.move_stack:
+        return None
+    return board.pop()
+
 
 
 def is_game_over(board):
-    """True on checkmate, stalemate, insufficient material, threefold
-    repetition or the 50-move rule (draws are claimed automatically)."""
-    # TODO(A1): use board.is_game_over with claim_draw=True.
-    raise NotImplementedError("A1: is_game_over")
+    # True on checkmate, stalemate, insufficient material, threefold
+    # repetition or the 50-move rule (draws are claimed automatically).
+    return  (
+        board.is_game_over(claim_draw=False)
+        or board.is_repetition(3)
+        or board.is_fifty_moves()
+    )
+
 
 
 def get_result(board):
-    """Return '1-0', '0-1', '1/2-1/2', or '*' if the game is still going."""
-    # TODO(A1): use board.result with claim_draw=True.
-    raise NotImplementedError("A1: get_result")
+    # Return '1-0', '0-1', '1/2-1/2', or '*' if the game is still going.
+    if not board.is_game_over(claim_draw=False):
+        return "*"
+    return board.result(claim_draw=False)
+
 
 
 def get_termination(board):
-    """Human-readable reason the game ended, e.g. 'CHECKMATE' or 'THREEFOLD_REPETITION'."""
+    # Human-readable reason the game ended, e.g. 'CHECKMATE' or 'THREEFOLD_REPETITION'.
     outcome = board.outcome(claim_draw=True)
     return outcome.termination.name if outcome else "ONGOING"
 
 
 def board_to_string(board):
-    """Board as text with Unicode pieces and rank/file labels (rank 8 on top)."""
-    # TODO(A1): loop ranks 7..0 and files 0..7, use board.piece_at(square).
-    raise NotImplementedError("A1: board_to_string")
+    # Board as text with Unicode pieces and rank/file labels (rank 8 on top).
+   return str(board)
+
