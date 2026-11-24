@@ -37,37 +37,81 @@ MINOR_START = {
 
 
 def _side(color):
-    """+1 for White, -1 for Black: multiply a per-colour score by this."""
+    # +1 for White, -1 for Black: multiply a per-colour score by this.
     return 1 if color == chess.WHITE else -1
 
-
 def material_score(board):
-    """White material minus Black material in centipawns."""
-    # TODO(A5): same idea as the reference agent, using PIECE_VALUES.
-    raise NotImplementedError("A5: material_score")
-
+    # White material minus Black material in centipawns.
+    white_mat = sum(len(board.pieces(pt, chess.WHITE)) *val for pt, val in PIECE_VALUES.items())
+    black_mat = sum(len(board.pieces(pt, chess.BLACK)) *val for pt, val in PIECE_VALUES.items())
+    return white_mat - black_mat
 
 def mobility_score(board):
-    """Squares attacked by knights, bishops, rooks and queens, excluding squares
-    holding our own pieces. Attack-based mobility is a fast stand-in for the
-    legal move count and does not depend on whose turn it is."""
-    # TODO(A5): for each colour, sum popcount(board.attacks(sq) & ~own_pieces).
-    raise NotImplementedError("A5: mobility_score")
-
+    # Squares attacked by knights, bishops, rooks and queens, excluding squares
+    # holding our own pieces. Attack-based mobility is a fast stand-in for the
+    # legal move count and does not depend on whose turn it is."""
+    # mobility = 0
+    # for pt in [chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.KING, chess.QUEEN]:
+    #     for color in [chess.WHITE, chess.BLACK]:
+    #         for sq in board.pieces(pt, color):
+    #             mask = board.attacks(sq)
+    #             own_pieces = board.occupied_co[color]
+    #             mobility += _side(color) * bin(mask & ~own_pieces).count("1")
+    #
+    # return mobility
+        score = 0
+        for pt in [chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN]:
+            for color in [chess.WHITE, chess.BLACK]:
+                for sq in board.pieces(pt, color):
+                    # Instead of creating a string and counting it, use the mask's bit_count (Python 3.10+)
+                    # Or just use python-chess's built-in pop count if bit_count isn't available
+                    mask = board.attacks(sq) & ~board.occupied_co[color]
+                    score += _side(color) * len(mask)
+        return score
 
 def development_score(board):
-    """Opening only: reward knights and bishops that have left their home squares,
-    and lightly penalise a queen that comes out before the minors."""
-    # TODO(A5): skip once fewer than ~10 non-pawn pieces remain (opening is over).
-    raise NotImplementedError("A5: development_score")
+    # Opening only: reward knights and bishops that have left their home squares,
+    # and lightly penalise a queen that comes out before the minors."""
+    score = 0
+    if board.fullmove_number <= 10 and bin(board.occupied).count("1") <20:
+        for color in [chess.WHITE, chess.BLACK]:
+            for sq in MINOR_START:
+                piece = board.piece_at(sq)
+                if piece and piece.color == color:
+                    score -= _side(color) * 10
+
+                # penalize early queen moves
+                q_sq = board.pieces(chess.QUEEN, color)
+                if q_sq:
+                    q_sq = list(q_sq)[0]
+                    home_q = chess.D1 if color == chess.WHITE else chess.D8
+
+                    if q_sq != home_q:
+                        score += _side(color) * WEIGHTS["early_queen"]
+
+    return score
 
 
 def king_zone_attack_score(board):
-    """Count attacks on the 3x3 zone around each king, weighted by attacker type,
-    and convert through SAFETY_TABLE so a pile-up of attackers scores big."""
-    # TODO(A5): zone = king square + chess.BB_KING_ATTACKS[king_sq].
-    # TODO(A5): for each enemy piece, add weight * popcount(attacks & zone).
-    raise NotImplementedError("A5: king_zone_attack_score")
+    # Count attacks on the 3x3 zone around each king, weighted by attacker type,
+    # and convert through SAFETY_TABLE so a pile-up of attackers scores big.
+    score = 0
+    for color in [chess.WHITE, chess.BLACK]:
+        king_sq = board.king(color)
+        if king_sq is None:
+            continue
+        zone_mask = chess.BB_KING_ATTACKS[king_sq] | chess.BB_SQUARES[king_sq]
+        attack_unit = 0
+        for sq in _bits(zone_mask):
+            attackers = board.attackers(not color, sq)
+            for a_sq in attackers:
+                pt = board.piece_at(a_sq).piece_type
+                attack_unit += KING_ZONE_ATTACK_WEIGHT.get(pt, 0)
+
+        safe_unit = min(attack_unit, len(SAFETY_TABLE) -1)
+        score += _side(not color) * SAFETY_TABLE[safe_unit]
+
+    return score
 
 
 def _bits(mask):
@@ -75,17 +119,35 @@ def _bits(mask):
 
 
 def threat_score(board):
-    """Checks, hanging enemy pieces, and general pressure on enemy pieces."""
-    # TODO(A5): bonus if the side to move is in check (the other side is giving it).
-    # TODO(A5): for each enemy piece we attack: +pressure; if it is undefended, + a share of its value.
-    raise NotImplementedError("A5: threat_score")
+    # Checks, hanging enemy pieces, and general pressure on enemy pieces.
+    score = 0
+    if board.is_check():
+        score += _side(board.turn) * WEIGHTS["check"]
+
+    for color in [chess.WHITE, chess.BLACK]:
+        opp_color = not color
+        for sq in board.pieces(chess.PAWN, opp_color) | board.pieces(chess.KNIGHT, opp_color) | board.pieces(chess.BISHOP, opp_color) | board.pieces(chess.ROOK, opp_color) | board.pieces(chess.QUEEN, opp_color) | board.pieces(chess.KING, opp_color):
+            if board.is_attacked_by(color, sq):
+                val = PIECE_VALUES.get(board.piece_at(sq).piece_type, 0)
+                score += _side(color) * int(val * (WEIGHTS["pressure"] / 100))
+                if not board.is_attacked_by(opp_color, sq):
+                    score += _side(color) * int(val * (WEIGHTS["threat"]/100))
+    return score
 
 
 class RaiderAgent(BaseAgent):
-    name = "The Raider"
-    author = "Partner A"
+    def __init__(self, depth=3):
+        super().__init__(depth)
+        self.name = "Raider Agent"
+        self.author = "Partner A"
 
     def evaluate(self, board):
-        """Sum of the Raider's terms, centipawns from White's point of view."""
-        # TODO(A5): add the five terms; apply WEIGHTS['material'] to material_score.
-        raise NotImplementedError("A5: evaluate")
+        # Sum of the Raider's terms, centipawns from White's point of view.
+        score = 0
+        score += material_score(board) * WEIGHTS["material"]
+        score += mobility_score(board) * WEIGHTS["mobility"]
+        score += development_score(board)
+        score += king_zone_attack_score(board) * WEIGHTS["king_zone"]
+        score += threat_score(board)
+
+        return int(score)

@@ -66,7 +66,7 @@ def test_agent_returns_legal_move(name):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("name", ["Raider (Partner A)", "Fortress (Partner B)"])
+@pytest.mark.parametrize("name", ["Raider", "Fortress"])
 def test_agent_vs_reference(name):
     """A full game as White against a shallower ReferenceAgent; the agent must not lose."""
     from match.harness import play_game
