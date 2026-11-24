@@ -7,7 +7,7 @@ from agents.base_agent import PIECE_VALUES, BaseAgent
 
 
 class ReferenceAgent(BaseAgent):
-    """Material only. If an agent cannot beat this, its extra terms are hurting it."""
+    """Material only."""
     name = "Reference"
     author = "Partner B"
 
