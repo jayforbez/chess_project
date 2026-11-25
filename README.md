@@ -13,6 +13,7 @@ A two-agent chess project featuring a custom game engine, Minimax search with Al
 
 Install via: `pip install -r requirements.txt`
 (Note: Linux users may need `sudo apt install python3-tk` for the GUI).
+(Note: Match_report is written as an .md, all of which is located in the `docs` folder
 
 ## How to Run
 
