@@ -23,10 +23,10 @@
 
 
 ## Against the reference agent
-| Agent | vs Reference (W-D-L) | vs Random (W-D-L) |
-|---|---|---|
-| The Raider | Not tested | Not tested |
-| The Fortress | Not tested | Not tested |
+| Agent | vs Reference (W-D-L) |
+|---|----------------------|
+| The Raider | 2-0-0                |
+| The Fortress | 2-0-0                |
 
 
 ## Interesting moments
