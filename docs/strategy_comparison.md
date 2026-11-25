@@ -12,3 +12,18 @@ Here is how it evaluates the board:
 * **Check (40.0):** A flat bonus for giving check. It likes forcing moves.
 * **Pressure (4.0):** A small bonus for attacking any enemy piece.
 * **Threat (0.15):** If an enemy piece is attacked and completely undefended, the Raider gets 15% of that piece's value.
+
+## The Fortress (Janae)
+The Fortress wins by structure. It does not reward mobility or direct attacks, preferring to play quiet, safe moves, build an unbreakable position, and wait for the opponent to overextend.
+
+Here is how it evaluates the board (all values are in centipawns):
+* **Material (1.0):** Standard centipawn values, keeping it grounded.
+* **Piece-Square Tables (PST) (1.0):** Rewards pieces for being on strong squares (e.g., knights in the center, rooks on open files) and penalizes them for being on the back rank.
+* **Doubled Pawns (-20):** Penalizes having two pawns on the same file.
+* **Isolated Pawns (-15):** Penalizes pawns with no friendly pawns on adjacent files.
+* **Passed Pawns (0 to 100 by rank):** Rewards passed pawns, with the bonus increasing exponentially as the pawn gets closer to promotion (rank 7 is worth 100).
+* **Pawn Shield (15):** Rewards having pawns directly in front of the king.
+* **Castled (35):** A large bonus for having a castled king. 
+* **Castle Rights (10):** A smaller bonus for still being able to castle (if not yet castled).
+* **Open King File (-25):** Penalizes the king being on a file with no friendly pawns.
+* **Center Control (15 occupy / 5 attack):** Rewards occupying and attacking the four center squares (d4, e4, d5, e5) to ensure the Fortress commands the middle of the board.
