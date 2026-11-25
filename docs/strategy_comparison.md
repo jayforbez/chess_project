@@ -1,6 +1,6 @@
 # Strategy Comparison
 
-## The Raider (Partner A)
+## The Raider (Casper-a)
 The Raider wins by activity and attack. It ignores pawn structure entirely, preferring to accept weak pawns in exchange for the initiative.
 
 Here is how it evaluates the board:
