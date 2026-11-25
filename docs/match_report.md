@@ -8,8 +8,8 @@
 ## Scoreline
 | Agent | Points | W | D | L |
 |---|---|---|---|---|
-| The Raider (Partner A) | 3.5 | 3 | 1 | 2 |
-| The Fortress (Partner B) | 2.5 | 2 | 1 | 3 |
+| The Raider (Kemier) | 3.5 | 3 | 1 | 2 |
+| The Fortress (Janae) | 2.5 | 2 | 1 | 3 |
 
 ## Games
 | # | White | Black | Result | Ended by | Plies |
